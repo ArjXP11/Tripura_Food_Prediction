@@ -7,6 +7,7 @@ from statsmodels.tsa.arima.model import ARIMAResults
 from statsmodels.tsa.arima.model import ARIMA
 from pmdarima import auto_arima
 import numpy as np
+from PIL import Image
 
 
 
@@ -64,7 +65,7 @@ df["Date"] = pd.to_datetime(df["Month"] + ' ' + df["Year"].astype(str), format='
 df['Date'] = pd.to_datetime(df['Date'])
 
 selected_city = "Rural"
-city = ["Rural","Urban","Rural+Urban"]
+city = ["Rural","Urban","Urban+Rural"]
 selected_city = st.selectbox("Select a city category",city )
 
 
@@ -73,41 +74,13 @@ products = ["Meat and fish","Egg","Milk and products","Vegetables"]
 selected_product = st.selectbox("Select a food category", products)
 
 # Load the ARIMA model for the selected product
-model_path = f"{selected_product}_arima_model.joblib"
-if os.path.exists(model_path) and city=="Rural":
-    df = df[df['Sector']=="Rural"]
-    model = load(model_path)
+filename = f"my_plot_{selected_product}_{selected_city}.png"
 
-    # Prepare data for selected product
-    df1 = df[["Date",selected_product]]
-    df1.set_index("Date", inplace=True)
-    monthly = df1.dropna(subset=[selected_product])
+if os.path.exists(filename):
+    st.image(Image.open(filename), caption=f"{selected_product} in {selected_city}")
 
-    # Forecast
-    n_periods = 24
-    forecast = model.get_forecast(steps=n_periods)
-    predicted = forecast.predicted_mean
-    conf_int = forecast.conf_int()
-
-    # Fix forecast index
-    last_date = monthly.index[-1]
-    future_dates = pd.date_range(start=last_date + pd.DateOffset(months=1), periods=n_periods, freq='MS')
-    predicted.index = future_dates
-    conf_int.index = future_dates
-
-    # Plot
-    fig, ax = plt.subplots(figsize=(10, 5))
-    ax.plot(monthly, label="Historical", color='blue')
-    ax.plot(predicted, label="Forecast", color='orange')
-    ax.fill_between(conf_int.index, conf_int.iloc[:, 0], conf_int.iloc[:, 1], color='orange', alpha=0.3)
-    ax.set_title(f"{selected_product} Forecast (Next {n_periods} Months)")
-    ax.legend()
-    ax.grid(True)
-    st.pyplot(fig)
 else:
     df1,predicted,conf_int,selected_product,n_periods = model_func(df, selected_product, selected_city)
-
-
     fig, ax = plt.subplots(figsize=(10, 5))
     ax.plot(df1[selected_product], label="Historical", color='blue')
     ax.plot(predicted, label="Forecast", color='orange')
